@@ -1,35 +1,46 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import MovieCard from "../components/MovieCard";
+import { searchMovies, getPopularMovies } from "../services/api";
 import "../css/Home.css";
 
 function Home() {
-    const [searchQuery, setSearchQuery] = useState("")
+  const [searchQuery, setSearchQuery] = useState("");
+  const [movies, setMovies] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const movies = [
-    {
-      id: 1,
-      title: "The Shawshank Redemption",
-      release_date: "1994",
-      url: "https://image.tmdb.org/t/p/w500/q6y0Go1tsGEsmtFryDOJo3dEmqu.jpg",
-    },
-    {
-      id: 2,
-      title: "The Godfather",
-      release_date: "1972",
-      url: "https://image.tmdb.org/t/p/w500/3bhkrj58Vtu7enYsRolD1fZdja1.jpg",
-    },
-    {
-      id: 3,
-      title: "The Dark Knight",
-      release_date: "2008",
-      url: "https://image.tmdb.org/t/p/w500/qJ2tW6WMUDux911r6m7haRef0WH.jpg",
-    },
-  ];
+  useEffect(() => {
+    const loadPopularMovies = async () => {
+      try {
+        const popularMovies = await getPopularMovies();
+        setMovies(popularMovies);
+      } catch (err) {
+        console.error(err);
+        setError("Failed to load popular movies");
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadPopularMovies();
+  }, []);
 
-  const handleSearch = (e) => {
+  const handleSearch = async (e) => {
     e.preventDefault();
-    alert(`Searching for "${searchQuery}"`);
-    setSearchQuery("");
+
+    if (!searchQuery.trim()) return
+    if (loading) return
+
+    setLoading(true);
+    try {
+      const searchResults = await searchMovies(searchQuery)
+      setMovies(searchResults)
+      setError(null)
+    } catch (err) {
+      console.error(err);
+      setError("Failed to search movies");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -46,11 +57,18 @@ function Home() {
           Search
         </button>
       </form>
-      <div className="movies-grid">
-        {movies.map((movie) => (
-          <MovieCard key={movie.id} movie={movie} />
-        ))}
-      </div>
+
+      {error && <div className="error-message">{error}</div>}
+
+      {loading ? (
+        <div className="loading">Loading...</div>
+      ) : (
+        <div className="movies-grid">
+          {movies.map((movie) => (
+            <MovieCard key={movie.id} movie={movie} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
